@@ -675,6 +675,7 @@ class SettingsFrame(wx.Frame):
                         "By default this is disabled due to",
                         "common GPU failures on these models.",
                     ],
+                    "override_function": self._update_global_settings,
                     "condition": not bool(self.constants.computer.real_model not in ["MacBookPro8,2", "MacBookPro8,3"])
                 },
                 "wrap_around 1": {
