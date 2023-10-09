@@ -204,7 +204,7 @@ class Constants:
         self.xhci_boot:     bool = False  # Allow UEFI XHCI Boot
 
         ## Graphics Settings
-        self.allow_ts2_accel:             bool = True  #  Set TeraScale 2 Acceleration support
+        self.allow_ts2_accel:             bool = True   # Set TeraScale 2 Acceleration support
         self.drm_support:                 bool = False  # Set iMac14,x DRM support
         self.force_nv_web:                bool = False  # Force Nvidia Web Drivers on Tesla and Kepler
         self.force_output_support:        bool = False  # Force Output support for Mac Pros with PC VBIOS
