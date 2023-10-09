@@ -66,6 +66,17 @@ class GenerateDefaults:
                 global_settings.GlobalEnviromentSettings().write_property("MacBookPro_TeraScale_2_Accel", False)
                 self.constants.allow_ts2_accel = False
 
+        if self.model in ["MacBookPro8,1", "MacBookPro8,2", "MacBookPro8,3"]:
+            # 2011 MacBook Pros suffer from a common issue where the system performance on
+            # battery power can lower drastically to unusable levels due to
+            # faulty ICs on the motherboard or aftermarket batteries, so make the patch opt-in
+            battery_fixup_status = global_settings.GlobalEnviromentSettings().read_property("MacBookPro_Battery_Fixup")
+            if battery_fixup_status is True:
+                self.constants.allow_battery_fixup = True
+            else:
+                global_settings.GlobalEnviromentSettings().write_property("MacBookPro_Battery_Fixup", False)
+                self.constants.allow_battery_fixup = False
+
         if self.model in smbios_data.smbios_dictionary:
             if smbios_data.smbios_dictionary[self.model]["CPU Generation"] >= cpu_data.CPUGen.skylake.value:
                 # On 2016-2017 MacBook Pros, 15" devices used a stock Samsung SSD with IONVMeController

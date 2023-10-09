@@ -1204,6 +1204,26 @@ class SystemPatchDictionary():
                 },
             },
             "Miscellaneous": {
+                "SMC Battery Power": {
+                    "Display Name": "Miscellaneous: SMC Battery Power",
+                    "OS Support": {
+                        "Minimum OS Support": {
+                            "OS Major": os_data.os_data.high_sierra,
+                            "OS Minor": 0
+                        },
+                        "Maximum OS Support": {
+                            "OS Major": os_data.os_data.max_os,
+                            "OS Minor": 99
+                        },
+                    },
+                    "Remove": {
+                        "/System/Library/Extensions/IOPlatformPluginFamily.kext/Contents/PlugIns/ACPI_SMC_PlatformPlugin.kext/Contents/Resources": [
+                            "MacBookPro8_1.plist",
+                            "MacBookPro8_2.plist",
+                            "MacBookPro8_3.plist",
+                        ],
+                    },
+                },
                 "Legacy GMUX": {
                     "Display Name": "Miscellaneous: Legacy GMUX",
                     "OS Support": {

@@ -681,6 +681,23 @@ class SettingsFrame(wx.Frame):
                 "wrap_around 1": {
                     "type": "wrap_around",
                 },
+                "SMC Patch for MacBookPro8,x": {
+                    "type": "checkbox",
+                    "value": global_settings.GlobalEnviromentSettings().read_property("MacBookPro_Battery_Fixup") or self.constants.allow_battery_fixup,
+                    "variable": "MacBookPro_Battery_Fixup",
+                    "constants_variable": "allow_battery_fixup",
+                    "description": [
+                        "Patches the power management kext,",
+                        "fixing the common issue of extremely",
+                        "slow responsiveness on battery power",
+                        "affecting certain faulty 2011 MacBook Pros.",
+                    ],
+                    "override_function": self._update_global_settings,
+                    "condition": not bool(self.constants.computer.real_model not in ["MacBookPro8,1", "MacBookPro8,2", "MacBookPro8,3"])
+                },
+                "wrap_around 2": {
+                    "type": "wrap_around",
+                },
                 "Non-Metal Configuration": {
                     "type": "title",
                 },
@@ -720,7 +737,7 @@ class SettingsFrame(wx.Frame):
                     "override_function": self._update_system_defaults,
                     "condition": gui_support.CheckProperties(self.constants).host_is_non_metal(general_check=True)
                 },
-                "wrap_around 2": {
+                "wrap_around 3": {
                     "type": "wrap_around",
                 },
                 "Beta Menu Bar": {

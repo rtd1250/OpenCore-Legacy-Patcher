@@ -168,6 +168,9 @@ class GenerateRootPatchSets:
         if self.hardware_details["Networking: Modern Wireless"] is True:
             required_patches.update({"Legacy Wireless": all_hardware_patchset["Networking"]["Modern Wireless"]})
 
+        if self.hardware_details["Miscellaneous: SMC Battery Power"] is True:
+            required_patches.update({"SMC Battery Power": all_hardware_patchset["Miscellaneous"]["SMC Battery Power"]})
+
         if self.hardware_details["Miscellaneous: Legacy GMUX"] is True:
             required_patches.update({"Legacy GMUX": all_hardware_patchset["Miscellaneous"]["Legacy GMUX"]})
 

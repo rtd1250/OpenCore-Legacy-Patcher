@@ -49,6 +49,7 @@ class DetectRootPatch:
         self.legacy_audio              = False
         self.legacy_wifi               = False
         self.modern_wifi               = False
+        self.battery_fixup             = False
         self.legacy_gmux               = False
         self.legacy_keyboard_backlight = False
         self.legacy_uhci_ohci          = False
@@ -538,6 +539,9 @@ class DetectRootPatch:
 
         self.has_network = network_handler.NetworkUtilities().verify_network_connection()
 
+        if self.model in ["MacBookPro8,1", "MacBookPro8,2", "MacBookPro8,3"]:
+            self.battery_fixup = self.constants.allow_battery_fixup
+
         if self.constants.detected_os >= os_data.os_data.sonoma:
             self.legacy_pcie_webcam = self.constants.computer.pcie_webcam
 
@@ -618,6 +622,7 @@ class DetectRootPatch:
             "Audio: Legacy Realtek":                       self.legacy_audio,
             "Networking: Legacy Wireless":                 self.legacy_wifi,
             "Networking: Modern Wireless":                 self.modern_wifi,
+            "Miscellaneous: SMC Battery Power":            self.battery_fixup,
             "Miscellaneous: Legacy GMUX":                  self.legacy_gmux,
             "Miscellaneous: Legacy Keyboard Backlight":    self.legacy_keyboard_backlight,
             "Miscellaneous: Legacy USB 1.1":               self.legacy_uhci_ohci,
