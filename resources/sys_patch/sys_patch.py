@@ -648,7 +648,10 @@ class PatchSysVolume:
             self._execute_patchset(sys_patch_generate.GenerateRootPatchSets(self.computer.real_model, self.constants, self.hardware_details).patchset)
 
         if self.constants.wxpython_variant is True and self.constants.detected_os >= os_data.os_data.big_sur:
-            sys_patch_auto.AutomaticSysPatch(self.constants).install_auto_patcher_launch_agent()
+            needs_daemon = False
+            if self.constants.detected_os >= os_data.os_data.ventura and self.skip_root_kmutil_requirement is False:
+                needs_daemon = True
+            sys_patch_auto.AutomaticSysPatch(self.constants).install_auto_patcher_launch_agent(kdk_caching_needed=needs_daemon)
 
         self._rebuild_root_volume()
 
@@ -716,8 +719,6 @@ class PatchSysVolume:
                         utilities.process_status(subprocess.run(process, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True))
         if any(x in required_patches for x in ["AMD Legacy GCN", "AMD Legacy Polaris", "AMD Legacy Vega"]):
             sys_patch_helpers.SysPatchHelpers(self.constants).disable_window_server_caching()
-        if any(x in required_patches for x in ["Intel Ivy Bridge", "Intel Haswell"]):
-            sys_patch_helpers.SysPatchHelpers(self.constants).remove_news_widgets()
         if "Metal 3802 Common Extended" in required_patches:
             sys_patch_helpers.SysPatchHelpers(self.constants).patch_gpu_compiler_libraries(mount_point=self.mount_location)
 

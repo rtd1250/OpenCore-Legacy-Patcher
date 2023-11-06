@@ -1,8 +1,44 @@
 # OpenCore Legacy Patcher changelog
 
+## 1.3.0
+
+## 1.2.0
+- Resolve application not existing if user dismisses an update instead of installing
+- Resolve lldb crashes on extracted binaries
+  - Remove MH_DYLIB_IN_CACHE flag from binaries extracted with DSCE
+- Add support for detecting T1 Security Chips in DFU mode
+- Resolve macOS 14.2 coreauthd crashes on T1 Macs
+- Resolve missing NFC firmware on T1 Macs
+- Update non-Metal Binaries for macOS Sonoma:
+  - Resolve Photos app crash
+  - Resolve loginwindow crashes
+  - Workaround tile window popup freezing apps by disabling the feature
+  - Workaround monochrome desktop widgets rendering issues by enforcing full color (can be disabled in OCLP settings)
+- Add new arguments:
+  - `--cache_os`: Cache necessary patcher files for OS to be installed (ex. KDKs)
+  - `--prepare_for_update`: Clean up patcher files for OS to be installed (ex. /Library/Extensions)
+- Add new Launch Daemons for handling macOS updates:
+  - `macos-update.plist`:
+    - Resolves KDKless Macs failing to boot after updating from 14.0 to 14.x
+    - Adds support for KDK caching for OS to be installed
+    - Invoked when update is staged
+    - `/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.macos-update.plist`
+  - `os-caching.plist`
+    - Resolves unsupported/old KDKs from being used post-update
+    - Invoked when update is downloading
+    - `/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.os-caching.plist`
+- Load UI icons from local path
+  - Resolves macOS downloader crash on slower machines
+- Resolve iMac18,2 internal 4K display support
+- Remove News Widget removal from Control Centre
+  - News Widget no longer crashes on 3802-based GPUs
+- Resolve i210 NIC support for macOS Sonoma
+- Increment Binaries:
+  - PatcherSupportPkg 1.4.5 - release
+  - OpenCorePkg 0.9.6 - release
+
 ## 1.1.0
 - Resolve rendering issues on Intel Broadwell iGPUs
-- Resolve Paravirtualized Graphics support for 3802 GPUs on macOS Sonoma
 - Update non-Metal Binaries for macOS Sonoma:
   - Resolve unresponsive Weather app
   - Resolve full screen menubar covering the app toolbar
@@ -11,11 +47,15 @@
 - Resolve PCIe FaceTime camera support on macOS 14.1
 - Resolve T1 Security Chip support on macOS 14
   - Applicable for MacBookPro13,2, MacBookPro13,3, MacBookPro14,2, MacBookPro14,3
+- Add support for stand alone OpenCore Vaulting without Xcode Command Line Tools (Jazzzny)
+- Re-allow NVMeFix for macOS 14
+- Remove `-lilubetaall` argument for machines without AppleALC
 - Increment Binaries:
   - PatcherSupportPkg 1.4.2 - release
   - AirportBrcmFixup 2.1.8 - release
   - BlueToolFixup 2.6.8 - release
   - RestrictEvents 1.1.3 - release
+  - AMFIPass 1.4.0 - release
 
 ## 1.0.1
 - Resolve rendering issues on Intel Ivy Bridge iGPUs
@@ -69,6 +109,7 @@
   - CPUFriend 1.2.7 - release
   - BlueToolFixup 2.6.8 - rolling (2305aaa)
   - CryptexFixup 1.0.2 - release
+  - NVMeFix 1.1.1 - release
   - PatcherSupportPkg 1.3.2 - release
 - Build Server Changes:
   - Upgrade Python backend to 3.11.5

@@ -1,17 +1,22 @@
 # Copyright (C) 2022, Mykola Grymalyuk
+# Copyright (c) 2023 Jazzzny
 
 import wx
+import wx.html2
+import requests
+import markdown2
 import logging
 import plistlib
 import subprocess
 import webbrowser
+import hashlib
 
 from pathlib import Path
 
 
 from resources import utilities, updates, global_settings, network_handler, constants
 from resources.sys_patch import sys_patch_detect
-from resources.wx_gui import gui_entry
+from resources.wx_gui import gui_entry, gui_support
 
 
 class AutomaticSysPatch:
@@ -51,19 +56,90 @@ class AutomaticSysPatch:
             logging.info(f"- Found new version: {version}")
 
             app = wx.App()
-            frame = wx.Frame(None, -1, "OpenCore Legacy Patcher")
-            dialog = wx.MessageDialog(
-                parent=frame,
-                message=f"Current Version: {self.constants.patcher_version}{' (Nightly)' if not self.constants.commit_info[0].startswith('refs/tags') else ''}\nNew version: {version}\nWould you like to update?",
-                caption="Update Available for OpenCore Legacy Patcher!",
-                style=wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION
-            )
-            dialog.SetYesNoCancelLabels("Download and install", "View on Github", "Ignore")
-            response = dialog.ShowModal()
-            if response == wx.ID_YES:
-                gui_entry.EntryPoint(self.constants).start(entry=gui_entry.SupportedEntryPoints.UPDATE_APP)
-            elif response == wx.ID_NO:
+            mainframe = wx.Frame(None, -1, "OpenCore Legacy Patcher")
+
+            ID_GITHUB = wx.NewId()
+            ID_UPDATE = wx.NewId()
+
+            url = "https://api.github.com/repos/dortania/OpenCore-Legacy-Patcher/releases/latest"
+            response = requests.get(url).json()
+            try:
+                changelog = response["body"].split("## Asset Information")[0]
+            except: #if user constantly checks for updates, github will rate limit them
+                changelog = """## Unable to fetch changelog
+
+Please check the Github page for more information about this release."""
+
+            html_markdown = markdown2.markdown(changelog)
+            html_css = """
+    <style>
+        body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.5;
+        font-size: 13px;
+        margin-top: 20px;
+        background-color: rgb(238,238,238);
+        }
+        h2 {
+        line-height: 0.5;
+        padding-left: 10px;
+        }
+        a {
+            color: -apple-system-control-accent;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                color: #fff;
+                background-color: rgb(47,47,47);
+            }
+
+        }
+    </style>
+    """
+            frame = wx.Dialog(None, -1, title="", size=(650, 500))
+            frame.SetMinSize((650, 500))
+            frame.SetWindowStyle(wx.STAY_ON_TOP)
+            panel = wx.Panel(frame)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.AddSpacer(10)
+            self.title_text = wx.StaticText(panel, label="A new version of OpenCore Legacy Patcher is available!")
+            self.description = wx.StaticText(panel, label=f"OpenCore Legacy Patcher {version} is now available - You have {self.constants.patcher_version}{' (Nightly)' if not self.constants.commit_info[0].startswith('refs/tags') else ''}. Would you like to update?")
+            self.title_text.SetFont(gui_support.font_factory(19, wx.FONTWEIGHT_BOLD))
+            self.description.SetFont(gui_support.font_factory(13, wx.FONTWEIGHT_NORMAL))
+            self.web_view = wx.html2.WebView.New(panel, style=wx.BORDER_SUNKEN)
+            html_code = html_css+html_markdown.replace("<a href=", "<a target='_blank' href=")
+            self.web_view.SetPage(html_code, "")
+            self.web_view.Bind(wx.html2.EVT_WEBVIEW_NEWWINDOW, self._onWebviewNav)
+            self.web_view.EnableContextMenu(False)
+            self.close_button = wx.Button(panel, label="Ignore")
+            self.close_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(wx.ID_CANCEL))
+            self.view_button = wx.Button(panel, ID_GITHUB, label="View on GitHub")
+            self.view_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_GITHUB))
+            self.install_button = wx.Button(panel, label="Download and Install")
+            self.install_button.Bind(wx.EVT_BUTTON, lambda event: frame.EndModal(ID_UPDATE))
+            self.install_button.SetDefault()
+
+            buttonsizer = wx.BoxSizer(wx.HORIZONTAL)
+            buttonsizer.Add(self.close_button, 0, wx.ALIGN_CENTRE | wx.RIGHT, 5)
+            buttonsizer.Add(self.view_button, 0, wx.ALIGN_CENTRE | wx.LEFT|wx.RIGHT, 5)
+            buttonsizer.Add(self.install_button, 0, wx.ALIGN_CENTRE | wx.LEFT, 5)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.Add(self.title_text, 0, wx.ALIGN_CENTRE | wx.TOP, 20)
+            sizer.Add(self.description, 0, wx.ALIGN_CENTRE | wx.BOTTOM, 20)
+            sizer.Add(self.web_view, 1, wx.EXPAND | wx.LEFT|wx.RIGHT, 10)
+            sizer.Add(buttonsizer, 0, wx.ALIGN_RIGHT | wx.ALL, 20)
+            panel.SetSizer(sizer)
+            frame.Centre()
+
+            result = frame.ShowModal()
+
+
+            if result == ID_GITHUB:
                 webbrowser.open(dict["Github Link"])
+            elif result == ID_UPDATE:
+                gui_entry.EntryPoint(self.constants).start(entry=gui_entry.SupportedEntryPoints.UPDATE_APP)
+
+
             return
 
         if utilities.check_seal() is True:
@@ -127,6 +203,9 @@ class AutomaticSysPatch:
         if self._determine_if_versions_match():
             self._determine_if_boot_matches()
 
+    def _onWebviewNav(self, event):
+        url = event.GetURL()
+        webbrowser.open(url)
 
     def _determine_if_versions_match(self):
         """
@@ -253,7 +332,7 @@ class AutomaticSysPatch:
             logging.info("- Unable to determine if boot disk is removable, skipping prompt")
 
 
-    def install_auto_patcher_launch_agent(self):
+    def install_auto_patcher_launch_agent(self, kdk_caching_needed: bool = False):
         """
         Install the Auto Patcher Launch Agent
 
@@ -268,8 +347,34 @@ class AutomaticSysPatch:
             logging.info("- Skipping Auto Patcher Launch Agent, not supported when running from source")
             return
 
+        services = {
+            self.constants.auto_patch_launch_agent_path:        "/Library/LaunchAgents/com.dortania.opencore-legacy-patcher.auto-patch.plist",
+            self.constants.update_launch_daemon_path:           "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.macos-update.plist",
+            **({ self.constants.rsr_monitor_launch_daemon_path: "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.rsr-monitor.plist" } if self._create_rsr_monitor_daemon() else {}),
+            **({ self.constants.kdk_launch_daemon_path:         "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.os-caching.plist" } if kdk_caching_needed is True else {} ),
+        }
+
+        for service in services:
+            name = Path(service).name
+            logging.info(f"- Installing {name}")
+            if Path(services[service]).exists():
+                if hashlib.sha256(open(service, "rb").read()).hexdigest() == hashlib.sha256(open(services[service], "rb").read()).hexdigest():
+                    logging.info(f"  - {name} checksums match, skipping")
+                    continue
+                logging.info(f"  - Existing service found, removing")
+                utilities.process_status(utilities.elevated(["rm", services[service]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+            # Create parent directories
+            if not Path(services[service]).parent.exists():
+                logging.info(f"  - Creating {Path(services[service]).parent} directory")
+                utilities.process_status(utilities.elevated(["mkdir", "-p", Path(services[service]).parent], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+            utilities.process_status(utilities.elevated(["cp", service, services[service]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+
+            # Set the permissions on the service
+            utilities.process_status(utilities.elevated(["chmod", "644", services[service]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+            utilities.process_status(utilities.elevated(["chown", "root:wheel", services[service]], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+
         if self.constants.launcher_binary.startswith("/Library/Application Support/Dortania/"):
-            logging.info("- Skipping Auto Patcher Launch Agent, already installed")
+            logging.info("- Skipping Patcher Install, already installed")
             return
 
         # Verify our binary isn't located in '/Library/Application Support/Dortania/'
@@ -298,37 +403,6 @@ class AutomaticSysPatch:
             utilities.process_status(utilities.elevated(["mv", f"/Library/Application Support/Dortania/{path}", "/Library/Application Support/Dortania/OpenCore-Patcher.app"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
 
         subprocess.run(["xattr", "-cr", "/Library/Application Support/Dortania/OpenCore-Patcher.app"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        # Copy over our launch agent
-        logging.info("- Copying auto-patch.plist Launch Agent to /Library/LaunchAgents/")
-        if Path("/Library/LaunchAgents/com.dortania.opencore-legacy-patcher.auto-patch.plist").exists():
-            logging.info("- Deleting existing auto-patch.plist")
-            utilities.process_status(utilities.elevated(["rm", "/Library/LaunchAgents/com.dortania.opencore-legacy-patcher.auto-patch.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-        if not Path("/Library/LaunchAgents/").exists():
-            logging.info("- Creating /Library/LaunchAgents/")
-            utilities.process_status(utilities.elevated(["mkdir", "-p", "/Library/LaunchAgents/"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-        utilities.process_status(utilities.elevated(["cp", self.constants.auto_patch_launch_agent_path, "/Library/LaunchAgents/"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-
-        # Set the permissions on the com.dortania.opencore-legacy-patcher.auto-patch.plist
-        logging.info("- Setting permissions on auto-patch.plist")
-        utilities.process_status(utilities.elevated(["chmod", "644", "/Library/LaunchAgents/com.dortania.opencore-legacy-patcher.auto-patch.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-        utilities.process_status(utilities.elevated(["chown", "root:wheel", "/Library/LaunchAgents/com.dortania.opencore-legacy-patcher.auto-patch.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-
-        # Copy over our launch daemon
-        if self._create_rsr_monitor_daemon() is True:
-            logging.info("- Copying rsr-monitor.plist Launch Daemon to /Library/LaunchDaemons/")
-            if Path("/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.rsr-monitor.plist").exists():
-                logging.info("- Deleting existing rsr-monitor.plist")
-                utilities.process_status(utilities.elevated(["rm", "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.rsr-monitor.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-            if not Path("/Library/LaunchDaemons/").exists():
-                logging.info("- Creating /Library/LaunchDaemons/")
-                utilities.process_status(utilities.elevated(["mkdir", "-p", "/Library/LaunchDaemons/"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-            utilities.process_status(utilities.elevated(["cp", self.constants.rsr_monitor_launch_daemon_path, "/Library/LaunchDaemons/"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-
-            # Set the permissions on the com.dortania.opencore-legacy-patcher.rsr-monitor.plist
-            logging.info("- Setting permissions on rsr-monitor.plist")
-            utilities.process_status(utilities.elevated(["chmod", "644", "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.rsr-monitor.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
-            utilities.process_status(utilities.elevated(["chown", "root:wheel", "/Library/LaunchDaemons/com.dortania.opencore-legacy-patcher.rsr-monitor.plist"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
 
         # Making app alias
         # Simply an easy way for users to notice the app

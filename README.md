@@ -15,7 +15,7 @@ Our project's main goal is to breathe new life into Macs no longer supported by 
 
 Noteworthy features of OpenCore Legacy Patcher:
 
-* Support for macOS Big Sur, Monterey and Ventura
+* Support for macOS Big Sur, Monterey, Ventura, and Sonoma
 * Native Over the Air (OTA) System Updates
 * Supports Penryn and newer Macs
 * Full support for WPA Wi-Fi and Personal Hotspot on BCM943224 and newer wireless chipsets
@@ -32,7 +32,7 @@ Note: Only clean-installs and upgrades are supported. macOS Big Sur installs alr
 
 * You can, however, reinstall macOS with this patcher and retain your original data
 
-Note 2: Currently, OpenCore Legacy Patcher officially supports patching to run macOS Big Sur through Ventura installs. For older OSes, OpenCore may function; however, support is currently not provided from Dortania.
+Note 2: Currently, OpenCore Legacy Patcher officially supports patching to run macOS Big Sur through Sonoma installs. For older OSes, OpenCore may function; however, support is currently not provided from Dortania.
 
 * For macOS Mojave and Catalina support, we recommend the use of [dosdude1's patchers](http://dosdude1.com)
 
@@ -100,6 +100,7 @@ To run the project from source, see here: [Build and run from source](./SOURCE.m
   * Pre-Ivy Bridge Aquantia Ethernet Patch
   * Non-Metal Photo Booth Patch for Monterey+
   * GUI and Backend Development
+  * Vaulting implementation
 * Amazing users who've graciously donate hardware:
   * [JohnD](https://forums.macrumors.com/members/johnd.53633/) - 2013 Mac Pro
   * [SpiGAndromeda](https://github.com/SpiGAndromeda) - AMD Vega 64

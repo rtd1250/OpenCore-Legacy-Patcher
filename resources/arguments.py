@@ -1,12 +1,17 @@
-import threading
+import sys
 import time
 import logging
-import sys
+import plistlib
+import threading
+import subprocess
 
-from resources import defaults, utilities, validation, constants
-from resources.sys_patch import sys_patch, sys_patch_auto
+from pathlib import Path
+
+from data import model_array, os_data
 from resources.build import build
-from data import model_array
+from resources.sys_patch import sys_patch, sys_patch_auto
+from resources import defaults, utilities, validation, constants
+from resources.wx_gui import gui_entry
 
 
 # Generic building args
@@ -39,6 +44,14 @@ class arguments:
 
         if self.args.unpatch_sys_vol:
             self._sys_unpatch_handler()
+            return
+
+        if self.args.prepare_for_update:
+            self._prepare_for_update_handler()
+            return
+
+        if self.args.cache_os:
+            self._cache_os_handler()
             return
 
         if self.args.auto_patch:
@@ -86,6 +99,62 @@ class arguments:
 
         logging.info("Set Auto patching")
         sys_patch_auto.AutomaticSysPatch(self.constants).start_auto_patch()
+
+
+    def _prepare_for_update_handler(self) -> None:
+        """
+        Prepare host for macOS update
+        """
+        logging.info("Preparing host for macOS update")
+
+        os_data = utilities.fetch_staged_update(variant="Update")
+        if os_data[0] is None:
+            logging.info("No update staged, skipping")
+            return
+
+        os_version = os_data[0]
+        os_build   = os_data[1]
+
+        logging.info(f"Preparing for update to {os_version} ({os_build})")
+
+        self._clean_le_handler()
+
+
+    def _cache_os_handler(self) -> None:
+        """
+        Fetch KDK for incoming OS
+        """
+        results = subprocess.run(["ps", "-ax"], stdout=subprocess.PIPE)
+        if results.stdout.decode("utf-8").count("OpenCore-Patcher --cache_os") > 1:
+            logging.info("Another instance of OS caching is running, exiting")
+            return
+
+        gui_entry.EntryPoint(self.constants).start(entry=gui_entry.SupportedEntryPoints.OS_CACHE)
+
+
+    def _clean_le_handler(self) -> None:
+        """
+        Clean /Library/Extensions of problematic kexts
+        Note macOS Ventura and older do this automatically
+        """
+
+        if self.constants.detected_os < os_data.os_data.sonoma:
+            return
+
+        logging.info("Cleaning /Library/Extensions")
+
+        for kext in Path("/Library/Extensions").glob("*.kext"):
+            if not Path(f"{kext}/Contents/Info.plist").exists():
+                continue
+            try:
+                kext_plist = plistlib.load(open(f"{kext}/Contents/Info.plist", "rb"))
+            except Exception as e:
+                logging.info(f"  - Failed to load plist for {kext.name}: {e}")
+                continue
+            if "GPUCompanionBundles" not in kext_plist:
+                continue
+            logging.info(f"  - Removing {kext.name}")
+            subprocess.run(["rm", "-rf", kext])
 
 
     def _build_handler(self) -> None:
